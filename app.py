@@ -4,9 +4,9 @@ import sys
 import os
 # Agregar el directorio actual al path para imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from controlador.controller import Controlador
-from modelo.modelo import MonteCarloCalculator     
-from vista.vista import VistaMonteCarlo    
+from controller.controller import Controlador
+from model.modelo import MonteCarloCalculator
+from view.vista import VistaMonteCarlo    
 
 class MonteCarloApp:
     def __init__(self):
