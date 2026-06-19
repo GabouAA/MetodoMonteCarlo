@@ -6,7 +6,6 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import math
 
-# Paleta de colores pastel
 COLORES = {
     'celeste': '#A8D8EA',
     'celeste_claro': '#D6EFF8',
@@ -23,11 +22,16 @@ COLORES = {
     'boton_func': '#FFB7B2',
     'progreso_bg': '#E8F8F5',
     'progreso_fg': '#48C9B0',
+    'panel_bg': '#EFF2F7',
+    'toolbar_bg': '#DDE4EC',
+    'toggle_on': '#5DADE2',
+    'toggle_off': '#BDC3C7',
+    'header_panel': '#A8D8EA',
 }
 
 
 class VistaMonteCarlo:
-    """Vista - Interfaz gráfica para el método de Monte Carlo"""
+    """Vista - Interfaz gráfica Dashboard para el método de Monte Carlo"""
 
     def __init__(self, root_or_controlador):
         if isinstance(root_or_controlador, tk.Tk) or isinstance(root_or_controlador, tk.Toplevel):
@@ -45,30 +49,28 @@ class VistaMonteCarlo:
         self.font_subtitulo = ("Segoe UI", 12, "bold")
         self.font_resultado = ("Consolas", 11)
 
-        self.root.title("Simulación Monte Carlo - Integrales")
-        self.root.geometry("1300x850")
+        self.root.title("Monte Carlo Dashboard — Integrales")
+        self.root.geometry("1450x900")
+        self.root.minsize(950, 650)
         self.root.configure(bg=COLORES['celeste_claro'])
 
         self._configurar_estilos()
 
-        # Frame principal
+        self._panels = {}
+
         main_frame = tk.Frame(self.root, bg=COLORES['celeste_claro'])
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Barra de progreso superior
-        self._crear_barra_progreso(main_frame)
+        self._crear_barra_estado(main_frame)
 
-        # Notebook con pestañas
         self.notebook = ttk.Notebook(main_frame, style='Custom.TNotebook')
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=(4, 4))
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=6, pady=(6, 0))
 
-        # Frame para integral 1D
         self.frame_1d = tk.Frame(self.notebook, bg=COLORES['blanco'])
-        self.notebook.add(self.frame_1d, text="  Integral Simple (1D)  ")
+        self.notebook.add(self.frame_1d, text="  ∫  Integral Simple (1D)  ")
 
-        # Frame para integral 2D
         self.frame_2d = tk.Frame(self.notebook, bg=COLORES['blanco'])
-        self.notebook.add(self.frame_2d, text="  Integral Doble (2D)  ")
+        self.notebook.add(self.frame_2d, text="  ∬  Integral Doble (2D)  ")
 
         self._crear_interfaz_1d()
         self._crear_interfaz_2d()
@@ -119,28 +121,29 @@ class VistaMonteCarlo:
         estilo.configure("Green.Horizontal.TProgressbar",
                          troughcolor=COLORES['progreso_bg'],
                          background=COLORES['progreso_fg'],
-                         thickness=22)
+                         thickness=18)
 
-    def _crear_barra_progreso(self, parent):
-        """Crea la barra de progreso superior con contador de puntos"""
+    # ── Status Bar (bottom) ──────────────────────────────────────────
+
+    def _crear_barra_estado(self, parent):
         self.progreso_frame = tk.Frame(parent, bg=COLORES['verde_claro'],
                                        highlightbackground=COLORES['borde'],
                                        highlightthickness=1, bd=0)
-        self.progreso_frame.pack(fill=tk.X, pady=(0, 6))
+        self.progreso_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
         inner = tk.Frame(self.progreso_frame, bg=COLORES['verde_claro'])
-        inner.pack(fill=tk.X, padx=12, pady=8)
+        inner.pack(fill=tk.X, padx=12, pady=4)
 
         self.progreso_label = tk.Label(inner,
                                        text="Listo para calcular",
-                                       font=("Segoe UI", 11),
+                                       font=("Segoe UI", 10),
                                        bg=COLORES['verde_claro'],
                                        fg=COLORES['texto'])
         self.progreso_label.pack(side=tk.LEFT)
 
         self.progreso_contador = tk.Label(inner,
                                           text="",
-                                          font=("Segoe UI", 11, "bold"),
+                                          font=("Segoe UI", 10, "bold"),
                                           bg=COLORES['verde_claro'],
                                           fg=COLORES['texto'])
         self.progreso_contador.pack(side=tk.RIGHT)
@@ -149,17 +152,15 @@ class VistaMonteCarlo:
                                              style="Green.Horizontal.TProgressbar",
                                              mode='determinate',
                                              maximum=100)
-        self.progreso_bar.pack(fill=tk.X, padx=12, pady=(0, 8))
+        self.progreso_bar.pack(fill=tk.X, padx=12, pady=(0, 4))
 
     def _set_bg_recursivo(self, widget, color):
-        """Aplica bg solo a widgets tk (no ttk)"""
         if isinstance(widget, (tk.Frame, tk.Label)):
             widget.configure(bg=color)
         for child in widget.winfo_children():
             self._set_bg_recursivo(child, color)
 
     def actualizar_progreso(self, actual, total):
-        """Actualiza la barra de progreso y el contador de puntos"""
         porcentaje = (actual / total) * 100
         self.progreso_bar['value'] = porcentaje
         self.progreso_label.configure(text=f"Generando puntos aleatorios...")
@@ -179,54 +180,161 @@ class VistaMonteCarlo:
         self.progreso_contador.configure(text="")
         self._set_bg_recursivo(self.progreso_frame, COLORES['verde_claro'])
 
-    def _crear_interfaz_1d(self):
-        """Crea la interfaz para integral 1D"""
-        left_frame = tk.Frame(self.frame_1d, bg=COLORES['blanco'], padx=10, pady=10)
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
+    # ── Toolbar with toggle buttons ──────────────────────────────────
 
-        # Título con fórmula
-        titulo_frame = tk.Frame(left_frame, bg=COLORES['blanco'],
+    def _crear_toolbar(self, parent, dimension):
+        toolbar = tk.Frame(parent, bg=COLORES['toolbar_bg'], height=42)
+        toolbar.pack(fill=tk.X, side=tk.TOP)
+        toolbar.pack_propagate(False)
+
+        btn_left = tk.Button(toolbar, text="◀ Resultados",
+                             font=("Segoe UI", 10, "bold"),
+                             bg=COLORES['toggle_on'], fg='white',
+                             activebackground=COLORES['celeste'],
+                             activeforeground='white',
+                             relief=tk.FLAT, cursor='hand2', padx=10,
+                             command=lambda: self._toggle_panel('left', dimension))
+        btn_left.pack(side=tk.LEFT, padx=(8, 4), pady=6)
+
+        btn_right = tk.Button(toolbar, text="Controles ▶",
+                              font=("Segoe UI", 10, "bold"),
+                              bg=COLORES['toggle_on'], fg='white',
+                              activebackground=COLORES['celeste'],
+                              activeforeground='white',
+                              relief=tk.FLAT, cursor='hand2', padx=10,
+                              command=lambda: self._toggle_panel('right', dimension))
+        btn_right.pack(side=tk.RIGHT, padx=(4, 8), pady=6)
+
+        formula_label = tk.Label(toolbar, text="",
+                                 font=("Cambria Math", 13),
+                                 bg=COLORES['toolbar_bg'],
+                                 fg=COLORES['texto'])
+        formula_label.pack(expand=True, fill=tk.X, padx=10)
+
+        self._panels[f'{dimension}_btn_left'] = btn_left
+        self._panels[f'{dimension}_btn_right'] = btn_right
+
+        return formula_label
+
+    def _toggle_panel(self, side, dimension):
+        key = f'{dimension}_{side}'
+        panel = self._panels[key]
+        visible_key = f'{key}_visible'
+        btn = self._panels[f'{dimension}_btn_{side}']
+
+        if self._panels.get(visible_key, True):
+            panel.grid_remove()
+            self._panels[visible_key] = False
+            btn.configure(bg=COLORES['toggle_off'])
+            if side == 'left':
+                btn.configure(text="▶ Resultados")
+            else:
+                btn.configure(text="◀ Controles")
+        else:
+            panel.grid()
+            self._panels[visible_key] = True
+            btn.configure(bg=COLORES['toggle_on'])
+            if side == 'left':
+                btn.configure(text="◀ Resultados")
+            else:
+                btn.configure(text="Controles ▶")
+
+    # ── 1D Interface ─────────────────────────────────────────────────
+
+    def _crear_interfaz_1d(self):
+        self.formula_label_1d = self._crear_toolbar(self.frame_1d, '1d')
+
+        content = tk.Frame(self.frame_1d, bg=COLORES['blanco'])
+        content.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        content.grid_columnconfigure(0, weight=0)
+        content.grid_columnconfigure(1, weight=1)
+        content.grid_columnconfigure(2, weight=0)
+        content.grid_rowconfigure(0, weight=1)
+
+        # ── Left panel: Results ──
+        left_panel = tk.Frame(content, bg=COLORES['panel_bg'], width=320,
+                              highlightbackground=COLORES['borde'],
+                              highlightthickness=1)
+        left_panel.grid(row=0, column=0, sticky='nsew', padx=(0, 3))
+        left_panel.grid_propagate(False)
+        self._panels['1d_left'] = left_panel
+        self._panels['1d_left_visible'] = True
+
+        header = tk.Frame(left_panel, bg=COLORES['header_panel'], height=34)
+        header.pack(fill=tk.X)
+        header.pack_propagate(False)
+        tk.Label(header, text="☰  Resultados",
+                 font=("Segoe UI", 11, "bold"),
+                 bg=COLORES['header_panel'],
+                 fg=COLORES['texto']).pack(side=tk.LEFT, padx=10, pady=5)
+
+        self.texto_resultados_1d = scrolledtext.ScrolledText(
+            left_panel, wrap=tk.WORD,
+            font=self.font_resultado,
+            bg=COLORES['blanco'], fg=COLORES['texto'],
+            bd=0, relief=tk.FLAT, padx=10, pady=8)
+        self.texto_resultados_1d.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+        # ── Center panel: Graph ──
+        center_panel = tk.Frame(content, bg=COLORES['blanco'],
                                 highlightbackground=COLORES['borde'],
                                 highlightthickness=1)
-        titulo_frame.pack(fill=tk.X, pady=(0, 10))
-        tk.Label(titulo_frame, text="Integral Simple",
-                 font=self.font_titulo, bg=COLORES['blanco'],
-                 fg=COLORES['texto']).pack(pady=(8, 2))
-        self.formula_label_1d = tk.Label(titulo_frame,
-                                          text="",
-                                          font=("Cambria Math", 14),
-                                          bg=COLORES['blanco'],
-                                          fg=COLORES['texto_claro'])
-        self.formula_label_1d.pack(pady=(0, 8))
-        self._actualizar_formula_1d()
+        center_panel.grid(row=0, column=1, sticky='nsew', padx=3)
 
-        # Función
-        self._crear_campo(left_frame, "f(x) =", "func_1d", "x**2",
+        self.graph_container_1d = tk.Frame(center_panel, bg=COLORES['blanco'])
+        self.graph_container_1d.pack(fill=tk.BOTH, expand=True)
+
+        # ── Right panel: Controls ──
+        right_panel = tk.Frame(content, bg=COLORES['panel_bg'], width=290,
+                               highlightbackground=COLORES['borde'],
+                               highlightthickness=1)
+        right_panel.grid(row=0, column=2, sticky='nsew', padx=(3, 0))
+        right_panel.grid_propagate(False)
+        self._panels['1d_right'] = right_panel
+        self._panels['1d_right_visible'] = True
+
+        header_r = tk.Frame(right_panel, bg=COLORES['header_panel'], height=34)
+        header_r.pack(fill=tk.X)
+        header_r.pack_propagate(False)
+        tk.Label(header_r, text="⚙  Calculadora",
+                 font=("Segoe UI", 11, "bold"),
+                 bg=COLORES['header_panel'],
+                 fg=COLORES['texto']).pack(side=tk.LEFT, padx=10, pady=5)
+
+        ctrl = tk.Frame(right_panel, bg=COLORES['panel_bg'])
+        ctrl.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+
+        titulo_frame = tk.Frame(ctrl, bg=COLORES['blanco'],
+                                highlightbackground=COLORES['borde'],
+                                highlightthickness=1)
+        titulo_frame.pack(fill=tk.X, pady=(4, 6))
+        tk.Label(titulo_frame, text="Integral Simple",
+                 font=("Segoe UI", 14, "bold"),
+                 bg=COLORES['blanco'],
+                 fg=COLORES['texto']).pack(pady=(6, 4))
+
+        self._crear_campo(ctrl, "f(x) =", "func_1d", "x**2",
                           "Ej: x**2, math.sin(x), math.exp(x)")
 
-        # Botones de funciones matemáticas
-        func_frame = tk.Frame(left_frame, bg=COLORES['blanco'])
-        func_frame.pack(pady=(0, 8), fill=tk.X)
+        func_frame = tk.Frame(ctrl, bg=COLORES['panel_bg'])
+        func_frame.pack(pady=(0, 4), fill=tk.X)
         self._crear_botones_funciones(func_frame, None, "1d")
 
-        # Límites
-        self._crear_campo(left_frame, "Límite inferior (a):", "a_1d", "0")
-        self._crear_campo(left_frame, "Límite superior (b):", "b_1d", "1")
-        self._crear_campo(left_frame, "Número de puntos (N):", "n_1d", "10000")
+        self._crear_campo(ctrl, "Límite inferior (a):", "a_1d", "0")
+        self._crear_campo(ctrl, "Límite superior (b):", "b_1d", "1")
+        self._crear_campo(ctrl, "Número de puntos (N):", "n_1d", "10000")
 
-        # Botón calcular
-        self.btn_calcular_1d = ttk.Button(left_frame, text="Calcular Integral",
+        self.btn_calcular_1d = ttk.Button(ctrl, text="Calcular Integral",
                                           style="Calcular.TButton",
                                           command=self._calcular_1d)
-        self.btn_calcular_1d.pack(pady=(15, 10), padx=5, fill=tk.X)
+        self.btn_calcular_1d.pack(pady=(10, 8), padx=4, fill=tk.X)
 
-        # Ejemplos
-        ej_frame = tk.LabelFrame(left_frame, text=" Ejemplos ",
+        ej_frame = tk.LabelFrame(ctrl, text=" Ejemplos ",
                                   font=self.font_subtitulo,
                                   bg=COLORES['verde_claro'],
                                   fg=COLORES['texto'],
                                   bd=1, relief=tk.GROOVE)
-        ej_frame.pack(fill=tk.X, pady=(10, 0))
+        ej_frame.pack(fill=tk.X, pady=(6, 4))
 
         self.btn_ej1_1d = ttk.Button(ej_frame, text="x² en [0, 1]",
                                       style="Ejemplo.TButton",
@@ -243,104 +351,119 @@ class VistaMonteCarlo:
                                       command=lambda: self._cargar_ejemplo_1d("math.exp(x)", 0, 1, 10000))
         self.btn_ej3_1d.pack(pady=(3, 8), padx=8, fill=tk.X)
 
-        # Frame derecho
-        right_frame = tk.Frame(self.frame_1d, bg=COLORES['blanco'], padx=5, pady=10)
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-
-        # Gráfico
-        graph_frame = tk.LabelFrame(right_frame, text=" Gráfico ",
-                                     font=self.font_subtitulo,
-                                     bg=COLORES['blanco'], fg=COLORES['texto'],
-                                     bd=1, relief=tk.GROOVE)
-        graph_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
-
-        self.graph_container_1d = tk.Frame(graph_frame, bg=COLORES['blanco'])
-        self.graph_container_1d.pack(fill=tk.BOTH, expand=True)
-
-        # Resultados
-        result_frame = tk.LabelFrame(right_frame, text=" Resultados ",
-                                      font=self.font_subtitulo,
-                                      bg=COLORES['blanco'], fg=COLORES['texto'],
-                                      bd=1, relief=tk.GROOVE)
-        result_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
-
-        self.texto_resultados_1d = scrolledtext.ScrolledText(result_frame,
-                                                              height=12,
-                                                              wrap=tk.WORD,
-                                                              font=self.font_resultado,
-                                                              bg=COLORES['blanco'],
-                                                              fg=COLORES['texto'],
-                                                              bd=0,
-                                                              relief=tk.FLAT,
-                                                              padx=10, pady=8)
-        self.texto_resultados_1d.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-        # Bindings para actualizar la fórmula en tiempo real
         self.func_1d.bind('<KeyRelease>', lambda e: self._actualizar_formula_1d())
         self.a_1d.bind('<KeyRelease>', lambda e: self._actualizar_formula_1d())
         self.b_1d.bind('<KeyRelease>', lambda e: self._actualizar_formula_1d())
+        self._actualizar_formula_1d()
+
+    # ── 2D Interface ─────────────────────────────────────────────────
 
     def _crear_interfaz_2d(self):
-        """Crea la interfaz para integral 2D"""
-        left_frame = tk.Frame(self.frame_2d, bg=COLORES['blanco'], padx=10, pady=10)
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
+        self.formula_label_2d = self._crear_toolbar(self.frame_2d, '2d')
 
-        # Título con fórmula
-        titulo_frame = tk.Frame(left_frame, bg=COLORES['blanco'],
+        content = tk.Frame(self.frame_2d, bg=COLORES['blanco'])
+        content.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        content.grid_columnconfigure(0, weight=0)
+        content.grid_columnconfigure(1, weight=1)
+        content.grid_columnconfigure(2, weight=0)
+        content.grid_rowconfigure(0, weight=1)
+
+        # ── Left panel: Results ──
+        left_panel = tk.Frame(content, bg=COLORES['panel_bg'], width=320,
+                              highlightbackground=COLORES['borde'],
+                              highlightthickness=1)
+        left_panel.grid(row=0, column=0, sticky='nsew', padx=(0, 3))
+        left_panel.grid_propagate(False)
+        self._panels['2d_left'] = left_panel
+        self._panels['2d_left_visible'] = True
+
+        header = tk.Frame(left_panel, bg=COLORES['header_panel'], height=34)
+        header.pack(fill=tk.X)
+        header.pack_propagate(False)
+        tk.Label(header, text="☰  Resultados",
+                 font=("Segoe UI", 11, "bold"),
+                 bg=COLORES['header_panel'],
+                 fg=COLORES['texto']).pack(side=tk.LEFT, padx=10, pady=5)
+
+        self.texto_resultados_2d = scrolledtext.ScrolledText(
+            left_panel, wrap=tk.WORD,
+            font=self.font_resultado,
+            bg=COLORES['blanco'], fg=COLORES['texto'],
+            bd=0, relief=tk.FLAT, padx=10, pady=8)
+        self.texto_resultados_2d.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+        # ── Center panel: Graph ──
+        center_panel = tk.Frame(content, bg=COLORES['blanco'],
                                 highlightbackground=COLORES['borde'],
                                 highlightthickness=1)
-        titulo_frame.pack(fill=tk.X, pady=(0, 10))
-        tk.Label(titulo_frame, text="Integral Doble",
-                 font=self.font_titulo, bg=COLORES['blanco'],
-                 fg=COLORES['texto']).pack(pady=(8, 2))
-        self.formula_label_2d = tk.Label(titulo_frame,
-                                          text="",
-                                          font=("Cambria Math", 14),
-                                          bg=COLORES['blanco'],
-                                          fg=COLORES['texto_claro'])
-        self.formula_label_2d.pack(pady=(0, 8))
-        self._actualizar_formula_2d()
+        center_panel.grid(row=0, column=1, sticky='nsew', padx=3)
 
-        # Función
-        self._crear_campo(left_frame, "f(x,y) =", "func_2d", "x*y",
+        self.graph_container_2d = tk.Frame(center_panel, bg=COLORES['blanco'])
+        self.graph_container_2d.pack(fill=tk.BOTH, expand=True)
+
+        # ── Right panel: Controls ──
+        right_panel = tk.Frame(content, bg=COLORES['panel_bg'], width=290,
+                               highlightbackground=COLORES['borde'],
+                               highlightthickness=1)
+        right_panel.grid(row=0, column=2, sticky='nsew', padx=(3, 0))
+        right_panel.grid_propagate(False)
+        self._panels['2d_right'] = right_panel
+        self._panels['2d_right_visible'] = True
+
+        header_r = tk.Frame(right_panel, bg=COLORES['header_panel'], height=34)
+        header_r.pack(fill=tk.X)
+        header_r.pack_propagate(False)
+        tk.Label(header_r, text="⚙  Calculadora",
+                 font=("Segoe UI", 11, "bold"),
+                 bg=COLORES['header_panel'],
+                 fg=COLORES['texto']).pack(side=tk.LEFT, padx=10, pady=5)
+
+        ctrl = tk.Frame(right_panel, bg=COLORES['panel_bg'])
+        ctrl.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+
+        titulo_frame = tk.Frame(ctrl, bg=COLORES['blanco'],
+                                highlightbackground=COLORES['borde'],
+                                highlightthickness=1)
+        titulo_frame.pack(fill=tk.X, pady=(4, 6))
+        tk.Label(titulo_frame, text="Integral Doble",
+                 font=("Segoe UI", 14, "bold"),
+                 bg=COLORES['blanco'],
+                 fg=COLORES['texto']).pack(pady=(6, 4))
+
+        self._crear_campo(ctrl, "f(x,y) =", "func_2d", "x*y",
                           "Ej: x*y, x**2 + y**2")
 
-        # Botones de funciones matemáticas
-        func_frame = tk.Frame(left_frame, bg=COLORES['blanco'])
-        func_frame.pack(pady=(0, 6), fill=tk.X)
+        func_frame = tk.Frame(ctrl, bg=COLORES['panel_bg'])
+        func_frame.pack(pady=(0, 4), fill=tk.X)
         self._crear_botones_funciones(func_frame, None, "2d")
 
-        # Intervalo X
-        sep_x = tk.Label(left_frame, text="Intervalo X",
-                          font=self.font_subtitulo,
-                          bg=COLORES['blanco'], fg=COLORES['texto'])
-        sep_x.pack(anchor=tk.W, pady=(6, 2))
-        self._crear_campo(left_frame, "Límite inferior (ax):", "ax_2d", "0")
-        self._crear_campo(left_frame, "Límite superior (bx):", "bx_2d", "1")
+        tk.Label(ctrl, text="Intervalo X",
+                 font=self.font_subtitulo,
+                 bg=COLORES['panel_bg'],
+                 fg=COLORES['texto']).pack(anchor=tk.W, pady=(4, 1))
+        self._crear_campo(ctrl, "Límite inferior (ax):", "ax_2d", "0")
+        self._crear_campo(ctrl, "Límite superior (bx):", "bx_2d", "1")
 
-        # Intervalo Y
-        sep_y = tk.Label(left_frame, text="Intervalo Y",
-                          font=self.font_subtitulo,
-                          bg=COLORES['blanco'], fg=COLORES['texto'])
-        sep_y.pack(anchor=tk.W, pady=(6, 2))
-        self._crear_campo(left_frame, "Límite inferior (cy):", "cy_2d", "0")
-        self._crear_campo(left_frame, "Límite superior (dy):", "dy_2d", "1")
+        tk.Label(ctrl, text="Intervalo Y",
+                 font=self.font_subtitulo,
+                 bg=COLORES['panel_bg'],
+                 fg=COLORES['texto']).pack(anchor=tk.W, pady=(4, 1))
+        self._crear_campo(ctrl, "Límite inferior (cy):", "cy_2d", "0")
+        self._crear_campo(ctrl, "Límite superior (dy):", "dy_2d", "1")
 
-        self._crear_campo(left_frame, "Número de puntos (N):", "n_2d", "10000")
+        self._crear_campo(ctrl, "Número de puntos (N):", "n_2d", "10000")
 
-        # Botón calcular
-        self.btn_calcular_2d = ttk.Button(left_frame, text="Calcular Integral",
+        self.btn_calcular_2d = ttk.Button(ctrl, text="Calcular Integral",
                                           style="Calcular.TButton",
                                           command=self._calcular_2d)
-        self.btn_calcular_2d.pack(pady=(10, 8), padx=5, fill=tk.X)
+        self.btn_calcular_2d.pack(pady=(8, 6), padx=4, fill=tk.X)
 
-        # Ejemplos
-        ej_frame = tk.LabelFrame(left_frame, text=" Ejemplos ",
+        ej_frame = tk.LabelFrame(ctrl, text=" Ejemplos ",
                                   font=self.font_subtitulo,
                                   bg=COLORES['verde_claro'],
                                   fg=COLORES['texto'],
                                   bd=1, relief=tk.GROOVE)
-        ej_frame.pack(fill=tk.X, pady=(8, 0))
+        ej_frame.pack(fill=tk.X, pady=(6, 4))
 
         self.btn_ej1_2d = ttk.Button(ej_frame, text="x·y en [0,1]×[0,1]",
                                       style="Ejemplo.TButton",
@@ -352,50 +475,26 @@ class VistaMonteCarlo:
                                       command=lambda: self._cargar_ejemplo_2d("x**2 + y**2", 0, 1, 0, 1, 10000))
         self.btn_ej2_2d.pack(pady=(3, 8), padx=8, fill=tk.X)
 
-        # Frame derecho
-        right_frame = tk.Frame(self.frame_2d, bg=COLORES['blanco'], padx=5, pady=10)
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-
-        graph_frame = tk.LabelFrame(right_frame, text=" Gráfico ",
-                                     font=self.font_subtitulo,
-                                     bg=COLORES['blanco'], fg=COLORES['texto'],
-                                     bd=1, relief=tk.GROOVE)
-        graph_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
-
-        self.graph_container_2d = tk.Frame(graph_frame, bg=COLORES['blanco'])
-        self.graph_container_2d.pack(fill=tk.BOTH, expand=True)
-
-        result_frame = tk.LabelFrame(right_frame, text=" Resultados ",
-                                      font=self.font_subtitulo,
-                                      bg=COLORES['blanco'], fg=COLORES['texto'],
-                                      bd=1, relief=tk.GROOVE)
-        result_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
-
-        self.texto_resultados_2d = scrolledtext.ScrolledText(result_frame,
-                                                              height=12,
-                                                              wrap=tk.WORD,
-                                                              font=self.font_resultado,
-                                                              bg=COLORES['blanco'],
-                                                              fg=COLORES['texto'],
-                                                              bd=0,
-                                                              relief=tk.FLAT,
-                                                              padx=10, pady=8)
-        self.texto_resultados_2d.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-        # Bindings para actualizar fórmula
         self.func_2d.bind('<KeyRelease>', lambda e: self._actualizar_formula_2d())
         self.ax_2d.bind('<KeyRelease>', lambda e: self._actualizar_formula_2d())
         self.bx_2d.bind('<KeyRelease>', lambda e: self._actualizar_formula_2d())
         self.cy_2d.bind('<KeyRelease>', lambda e: self._actualizar_formula_2d())
         self.dy_2d.bind('<KeyRelease>', lambda e: self._actualizar_formula_2d())
+        self._actualizar_formula_2d()
+
+    # ── Shared field creator ─────────────────────────────────────────
 
     def _crear_campo(self, parent, label_text, attr_name, default="", hint=None):
-        """Crea un campo de entrada con label"""
-        tk.Label(parent, text=label_text, font=self.font_label2,
-                 bg=COLORES['blanco'], fg=COLORES['texto'],
-                 anchor=tk.W).pack(anchor=tk.W, pady=(6, 2))
+        try:
+            bg = parent.cget('bg')
+        except Exception:
+            bg = COLORES['blanco']
 
-        entry = tk.Entry(parent, width=28, font=self.font_entry,
+        tk.Label(parent, text=label_text, font=self.font_label2,
+                 bg=bg, fg=COLORES['texto'],
+                 anchor=tk.W).pack(anchor=tk.W, pady=(4, 1))
+
+        entry = tk.Entry(parent, width=28, font=self.font_entry2,
                          bg=COLORES['blanco'],
                          fg=COLORES['texto'],
                          relief=tk.FLAT,
@@ -403,19 +502,18 @@ class VistaMonteCarlo:
                          highlightthickness=1,
                          highlightcolor=COLORES['boton_calcular'],
                          insertbackground=COLORES['texto'])
-        entry.pack(pady=(0, 2), padx=5, fill=tk.X, ipady=4)
+        entry.pack(pady=(0, 1), padx=4, fill=tk.X, ipady=3)
         entry.insert(0, default)
         setattr(self, attr_name, entry)
 
         if hint:
-            tk.Label(parent, text=hint, font=("Segoe UI", 9),
-                     bg=COLORES['blanco'], fg=COLORES['texto_claro'],
-                     anchor=tk.W).pack(anchor=tk.W, padx=5)
+            tk.Label(parent, text=hint, font=("Segoe UI", 8),
+                     bg=bg, fg=COLORES['texto_claro'],
+                     anchor=tk.W).pack(anchor=tk.W, padx=4)
 
-    # --- Fórmulas con formato matemático ---
+    # ── Formula display ──────────────────────────────────────────────
 
     def _formato_funcion(self, func_str):
-        """Convierte la función a notación matemática legible"""
         f = func_str
         f = f.replace("math.sin", "sin")
         f = f.replace("math.cos", "cos")
@@ -442,7 +540,6 @@ class VistaMonteCarlo:
         return f
 
     def _actualizar_formula_1d(self):
-        """Actualiza la visualización de la fórmula 1D"""
         try:
             func = self.func_1d.get() or "f(x)"
             a = self.a_1d.get() or "a"
@@ -450,11 +547,10 @@ class VistaMonteCarlo:
             func_fmt = self._formato_funcion(func)
             formula = f"∫ [{a}, {b}]  {func_fmt}  dx"
             self.formula_label_1d.configure(text=formula)
-        except:
+        except Exception:
             pass
 
     def _actualizar_formula_2d(self):
-        """Actualiza la visualización de la fórmula 2D"""
         try:
             func = self.func_2d.get() or "f(x,y)"
             ax = self.ax_2d.get() or "a"
@@ -464,10 +560,10 @@ class VistaMonteCarlo:
             func_fmt = self._formato_funcion(func)
             formula = f"∬ [{ax},{bx}]×[{cy},{dy}]  {func_fmt}  dx dy"
             self.formula_label_2d.configure(text=formula)
-        except:
+        except Exception:
             pass
 
-    # --- Métodos de la vista ---
+    # ── View interface methods (unchanged signatures) ────────────────
 
     def obtener_valores_1d(self):
         return {
@@ -599,12 +695,9 @@ class VistaMonteCarlo:
 
         texto_widget.delete(1.0, tk.END)
         texto_widget.insert(1.0, texto)
-
-        # Aplicar formato a secciones
         self._aplicar_formato_resultados(texto_widget)
 
     def _aplicar_formato_resultados(self, widget):
-        """Aplica colores y formato al texto de resultados"""
         widget.tag_configure("titulo", foreground="#2E86AB", font=("Segoe UI", 12, "bold"))
         widget.tag_configure("seccion", foreground="#27AE60", font=("Segoe UI", 11, "bold"))
         widget.tag_configure("resultado", foreground="#E74C3C", font=("Consolas", 12, "bold"))
@@ -653,28 +746,29 @@ class VistaMonteCarlo:
             self.mostrar_error("Controlador no inicializado")
 
     def _crear_botones_funciones(self, parent_frame, entry_widget_unused, dimension):
-        """Crea botones de funciones matemáticas"""
         entry_attr = "func_1d" if dimension == "1d" else "func_2d"
 
-        row1 = tk.Frame(parent_frame, bg=COLORES['blanco'])
-        row1.pack(fill=tk.X, pady=2)
+        try:
+            bg = parent_frame.cget('bg')
+        except Exception:
+            bg = COLORES['blanco']
 
+        row1 = tk.Frame(parent_frame, bg=bg)
+        row1.pack(fill=tk.X, pady=2)
         for text, func_str in [("cos", "math.cos("), ("sin", "math.sin("), ("tan", "math.tan(")]:
             btn = ttk.Button(row1, text=text, width=7, style="Func.TButton",
                              command=lambda f=func_str, a=entry_attr: self._insertar_funcion(getattr(self, a), f))
             btn.pack(side=tk.LEFT, padx=2, expand=True, fill=tk.X)
 
-        row2 = tk.Frame(parent_frame, bg=COLORES['blanco'])
+        row2 = tk.Frame(parent_frame, bg=bg)
         row2.pack(fill=tk.X, pady=2)
-
         for text, func_str in [("arcsin", "math.asin("), ("arccos", "math.acos("), ("arctan", "math.atan(")]:
             btn = ttk.Button(row2, text=text, width=7, style="Func.TButton",
                              command=lambda f=func_str, a=entry_attr: self._insertar_funcion(getattr(self, a), f))
             btn.pack(side=tk.LEFT, padx=2, expand=True, fill=tk.X)
 
-        row3 = tk.Frame(parent_frame, bg=COLORES['blanco'])
+        row3 = tk.Frame(parent_frame, bg=bg)
         row3.pack(fill=tk.X, pady=2)
-
         for text, func_str in [("log", "math.log10("), ("ln", "math.log("), ("exp", "math.exp(")]:
             btn = ttk.Button(row3, text=text, width=7, style="Func.TButton",
                              command=lambda f=func_str, a=entry_attr: self._insertar_funcion(getattr(self, a), f))
@@ -689,7 +783,6 @@ class VistaMonteCarlo:
         nueva_pos = cursor_pos + len(funcion)
         entry_widget.icursor(nueva_pos)
         entry_widget.focus_set()
-        # Actualizar fórmula
         if entry_widget == self.func_1d:
             self._actualizar_formula_1d()
         elif entry_widget == self.func_2d:
