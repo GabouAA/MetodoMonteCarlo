@@ -1,0 +1,50 @@
+DEPENDENCIAS NECESARIAS PARA EJECUTAR EL PROGRAMA MONTE CARLO
+================================================================
+
+Este programa requiere las siguientes dependencias externas:
+
+1. numpy
+   - Descripción: Biblioteca para operaciones numéricas y arrays
+   - Instalación: pip install numpy
+
+2. matplotlib
+   - Descripción: Biblioteca para crear gráficos y visualizaciones
+   - Instalación: pip install matplotlib
+
+3. SymPy
+   - Descripción: Biblioteca para calcular integrales exactas
+   - Instalación: pip install sympy
+
+================================================================
+INSTRUCCIONES DE INSTALACIÓN
+================================================================
+
+Para instalar todas las dependencias, ejecuta el siguiente comando en la terminal:
+
+    pip install numpy matplotlib sympy
+
+O instala cada una por separado:
+
+    pip install numpy
+    pip install matplotlib
+    pip install sympy
+
+================================================================
+NOTAS IMPORTANTES
+================================================================
+
+- Python 3.x es requerido para ejecutar este programa
+- Tkinter viene incluido con Python (no requiere instalación adicional)
+- Las librerías math, random, sys, os y typing son parte de la biblioteca estándar de Python
+
+================================================================
+VERSIÓN MÍNIMA RECOMENDADA
+================================================================
+
+- Python: 3.6 o superior
+- numpy: 1.19.0 o superior
+- matplotlib: 3.3.0 o superior
+- SymPy: 1.12 o superior
+
+================================================================
+
