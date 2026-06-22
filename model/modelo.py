@@ -117,3 +117,36 @@ class MonteCarloCalculator:
 
         except:
             return None
+
+    @staticmethod
+    def calcular_valor_exacto_2d(func_str: str, a: float, b: float, c: float, d: float) -> float:
+        """Calcula valor exacto para integrales dobles usando SymPy"""
+        try:
+            x = sp.Symbol('x')
+            y = sp.Symbol('y')
+
+            reemplazos = {
+                "math.sin": "sin",
+                "math.cos": "cos",
+                "math.tan": "tan",
+                "math.asin": "asin",
+                "math.acos": "acos",
+                "math.atan": "atan",
+                "math.exp": "exp",
+                "math.log": "ln",
+                "math.log10": "(log(x)/log(10))",
+                "math.pi": "pi",
+                "math.e": "E"
+            }
+
+            for k, v in reemplazos.items():
+                func_str = func_str.replace(k, v)
+
+            func = sp.sympify(func_str)
+            resultado = sp.integrate(func, (x, a, b), (y, c, d))
+            resultado_simplificado = sp.simplify(resultado)
+
+            return float(resultado_simplificado.evalf())
+
+        except:
+            return None

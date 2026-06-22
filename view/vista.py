@@ -313,7 +313,7 @@ class VistaMonteCarlo:
                  bg=COLORES['blanco'],
                  fg=COLORES['texto']).pack(pady=(6, 4))
 
-        self._crear_campo(ctrl, "f(x) =", "func_1d", "x**2",
+        self._crear_campo(ctrl, "f(x) =", "func_1d", "-x**2 +4*x",
                           "Ej: x**2, math.sin(x), math.exp(x)")
 
         func_frame = tk.Frame(ctrl, bg=COLORES['panel_bg'])
@@ -321,8 +321,8 @@ class VistaMonteCarlo:
         self._crear_botones_funciones(func_frame, None, "1d")
 
         self._crear_campo(ctrl, "Límite inferior (a):", "a_1d", "0")
-        self._crear_campo(ctrl, "Límite superior (b):", "b_1d", "1")
-        self._crear_campo(ctrl, "Número de puntos (N):", "n_1d", "10000")
+        self._crear_campo(ctrl, "Límite superior (b):", "b_1d", "4")
+        self._crear_campo(ctrl, "Número de puntos (N):", "n_1d", "10")
 
         self.btn_calcular_1d = ttk.Button(ctrl, text="Calcular Integral",
                                           style="Calcular.TButton",
@@ -336,19 +336,19 @@ class VistaMonteCarlo:
                                   bd=1, relief=tk.GROOVE)
         ej_frame.pack(fill=tk.X, pady=(6, 4))
 
-        self.btn_ej1_1d = ttk.Button(ej_frame, text="x² en [0, 1]",
+        self.btn_ej1_1d = ttk.Button(ej_frame, text="-x² + 4x en [0, 4]",
                                       style="Ejemplo.TButton",
-                                      command=lambda: self._cargar_ejemplo_1d("x**2", 0, 1, 10000))
+                                      command=lambda: self._cargar_ejemplo_1d("-x**2 +4*x", 0, 4, 10))
         self.btn_ej1_1d.pack(pady=3, padx=8, fill=tk.X)
 
-        self.btn_ej2_1d = ttk.Button(ej_frame, text="sin(x) en [0, π]",
+        self.btn_ej2_1d = ttk.Button(ej_frame, text="√(4 - x²) en [0, 2]",
                                       style="Ejemplo.TButton",
-                                      command=lambda: self._cargar_ejemplo_1d("math.sin(x)", 0, math.pi, 10000))
+                                      command=lambda: self._cargar_ejemplo_1d("(4 - x**2)**(1/2)", 0, 2, 100))
         self.btn_ej2_1d.pack(pady=3, padx=8, fill=tk.X)
 
-        self.btn_ej3_1d = ttk.Button(ej_frame, text="eˣ en [0, 1]",
+        self.btn_ej3_1d = ttk.Button(ej_frame, text="x·eˣ en [0, 2]",
                                       style="Ejemplo.TButton",
-                                      command=lambda: self._cargar_ejemplo_1d("math.exp(x)", 0, 1, 10000))
+                                      command=lambda: self._cargar_ejemplo_1d("x * math.exp(x)", 0, 2, 100))
         self.btn_ej3_1d.pack(pady=(3, 8), padx=8, fill=tk.X)
 
         self.func_1d.bind('<KeyRelease>', lambda e: self._actualizar_formula_1d())
@@ -465,15 +465,20 @@ class VistaMonteCarlo:
                                   bd=1, relief=tk.GROOVE)
         ej_frame.pack(fill=tk.X, pady=(6, 4))
 
-        self.btn_ej1_2d = ttk.Button(ej_frame, text="x·y en [0,1]×[0,1]",
+        self.btn_ej1_2d = ttk.Button(ej_frame, text="4 - x² - y² en [-1,1]×[-1,1]",
                                       style="Ejemplo.TButton",
-                                      command=lambda: self._cargar_ejemplo_2d("x*y", 0, 1, 0, 1, 10000))
+                                      command=lambda: self._cargar_ejemplo_2d("4 - x**2 - y**2", -1, 1, -1, 1, 1000))
         self.btn_ej1_2d.pack(pady=3, padx=8, fill=tk.X)
 
-        self.btn_ej2_2d = ttk.Button(ej_frame, text="x²+y² en [0,1]×[0,1]",
+        self.btn_ej2_2d = ttk.Button(ej_frame, text="sin(x)·cos(y) en [0,π]×[0,π/2]",
                                       style="Ejemplo.TButton",
-                                      command=lambda: self._cargar_ejemplo_2d("x**2 + y**2", 0, 1, 0, 1, 10000))
-        self.btn_ej2_2d.pack(pady=(3, 8), padx=8, fill=tk.X)
+                                      command=lambda: self._cargar_ejemplo_2d("math.sin(x) * math.cos(y)", 0, 3.14159, 0, 1.57079, 10000))
+        self.btn_ej2_2d.pack(pady=3, padx=8, fill=tk.X)
+
+        self.btn_ej3_2d = ttk.Button(ej_frame, text="x·eʸ en [0,2]×[0,1]",
+                                      style="Ejemplo.TButton",
+                                      command=lambda: self._cargar_ejemplo_2d("x * math.exp(y)", 0, 2, 0, 1, 1000))
+        self.btn_ej3_2d.pack(pady=(3, 8), padx=8, fill=tk.X)
 
         self.func_2d.bind('<KeyRelease>', lambda e: self._actualizar_formula_2d())
         self.ax_2d.bind('<KeyRelease>', lambda e: self._actualizar_formula_2d())
@@ -521,7 +526,7 @@ class VistaMonteCarlo:
         f = f.replace("math.asin", "arcsin")
         f = f.replace("math.acos", "arccos")
         f = f.replace("math.atan", "arctan")
-        f = f.replace("math.exp", "exp")
+        f = f.replace("math.exp(", "e^(")
         f = f.replace("math.log10", "log₁₀")
         f = f.replace("math.log", "ln")
         f = f.replace("math.pi", "π")
@@ -529,7 +534,7 @@ class VistaMonteCarlo:
         f = f.replace("math.sqrt", "√")
         f = f.replace("np.sin", "sin")
         f = f.replace("np.cos", "cos")
-        f = f.replace("np.exp", "exp")
+        f = f.replace("np.exp(", "e^(")
         f = f.replace("np.log", "ln")
         f = f.replace("np.sqrt", "√")
         f = f.replace("**2", "²")

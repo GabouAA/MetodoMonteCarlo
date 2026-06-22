@@ -132,6 +132,15 @@ class ControladorMonteCarlo:
         texto += "RESULTADO DE LA APROXIMACIÓN\n"
         texto += f"   ∬ f(x,y) dx dy  ≈  {resultado:.8f}\n\n"
 
+        exacto = self.modelo.calcular_valor_exacto_2d(func, ax, bx, cy, dy)
+        if exacto is not None:
+            error = abs(resultado - exacto)
+            error_rel = (error / abs(exacto) * 100) if exacto != 0 else 0
+            texto += "COMPARACIÓN CON VALOR EXACTO\n"
+            texto += f"   Valor exacto:    {exacto:.8f}\n"
+            texto += f"   Error absoluto:  {error:.8f}\n"
+            texto += f"   Error relativo:  {error_rel:.4f}%\n\n"
+
         texto += "PUNTOS ALEATORIOS (primeros 10)\n"
         for i, punto in enumerate(puntos[:10]):
             texto += f"   ({punto['x']:.3f}, {punto['y']:.3f})  →  f = {punto['z']:.4f}\n"
